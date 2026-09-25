@@ -1,0 +1,9 @@
+{
+  "name":"laporan-penjualan-akun-v3.9-vercel-db",
+  "version":"3.9.1",
+  "private":true,
+  "description":"Laporan penjualan akun V3.9 - Vercel + PostgreSQL persistent database",
+  "scripts":{"start":"vercel dev","migrate":"node scripts/migrate-json.js"},
+  "dependencies":{"@vercel/node":"^5.5.16","express":"^4.21.2","pg":"^8.16.3"},
+  "devDependencies":{"vercel":"^48.4.1"}
+}
