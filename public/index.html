@@ -453,19 +453,42 @@ h1,h2,h3,h4,p,small,span,label,td,th,div{
     padding:7px!important;
     align-items:start!important;
   }
+  /* Mobile modal: only the form content scrolls. Header and action buttons stay visible. */
   .modal-box{
     width:100%!important;
     max-width:none!important;
-    max-height:98vh!important;
+    height:calc(100dvh - 14px)!important;
+    max-height:none!important;
     margin:0!important;
     border-radius:14px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
   }
-  .modal-box .head{position:sticky!important;top:0!important}
+  .modal-box .head{
+    position:relative!important;
+    top:auto!important;
+    flex:0 0 auto!important;
+    z-index:5!important;
+  }
+  .modal-box > .form{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:0!important;
+  }
   .modal-box .formactions{
     position:sticky!important;
     bottom:0!important;
-    padding:9px 0!important;
-    background:inherit!important;
+    z-index:10!important;
+    flex:0 0 auto!important;
+    padding:9px 0 calc(9px + env(safe-area-inset-bottom))!important;
+    margin:0!important;
+    background:#091a2f!important;
+    border-top:1px solid #1c3d5e!important;
+    box-shadow:0 -8px 18px rgba(0,0,0,.16)!important;
   }
 
   .report-filter{
