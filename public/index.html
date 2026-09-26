@@ -630,6 +630,73 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 </style>
 
+
+<style id="desktop-windows-action-fix">
+/* Desktop / Windows only — layout visual, no function changes */
+@media (min-width:1101px){
+  .app-shell{
+    width:min(1900px,calc(100% - 28px))!important;
+    grid-template-columns:270px minmax(0,1fr)!important;
+    gap:20px!important;
+    margin-top:20px!important;
+  }
+  .sidebar{
+    min-height:calc(100vh - 120px)!important;
+  }
+  .content-area{
+    min-width:0!important;
+  }
+  #data .tablewrap{
+    overflow-x:auto!important;
+    overflow-y:auto!important;
+  }
+  #data .table{
+    min-width:2050px!important;
+    font-size:12px!important;
+  }
+  #data .table th{
+    padding:12px 9px!important;
+    font-size:11px!important;
+  }
+  #data .table td{
+    padding:11px 9px!important;
+  }
+  /* Aksi tetap satu baris dan punya ruang yang cukup */
+  #data .table th:last-child,
+  #data .table td:last-child{
+    width:270px!important;
+    min-width:270px!important;
+    max-width:270px!important;
+    white-space:nowrap!important;
+  }
+  #data .table td:last-child .btn{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:78px!important;
+    min-height:38px!important;
+    padding:9px 12px!important;
+    margin:2px!important;
+    white-space:nowrap!important;
+    font-size:11px!important;
+  }
+  #data .table td:last-child .hackback-action{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-height:38px!important;
+    padding:8px 10px!important;
+    margin:2px!important;
+    white-space:nowrap!important;
+    font-size:11px!important;
+    vertical-align:middle!important;
+  }
+  #data .table td:last-child .hackback-action input{
+    width:auto!important;
+    max-width:none!important;
+  }
+}
+</style>
 </head>
 <body>
 <div id="login" class="login"><div class="loginbox"><div style="font-size:35px">🎮</div><h1>Login Admin</h1><p>Website Laporan Penjualan Akun</p><form onsubmit="login(event)"><input id="lu" placeholder="Username" value="admin" required><input id="lp" type="password" placeholder="Password" value="admin123" required><button class="btn blue" style="width:100%;margin-top:8px">Masuk</button></form><p style="font-size:11px">Login awal: <b>admin / admin123</b></p><div id="lerr" style="color:#dc2626;font-size:12px"></div></div></div>
