@@ -2,6 +2,42 @@
 <html lang="id"><head><link rel="icon" type="image/x-icon" href="/public/favicon.ico"> <link rel="icon" type="image/png" sizes="192x192" href="/public/favicon-192.png"> <link rel="apple-touch-icon" href="/public/favicon-512.png"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Laporan Penjualan Akun</title>
 <style>
+  /* =====================================
+   DARK MODE
+===================================== */
+
+function applyDarkMode() {
+    const enabled = localStorage.getItem('darkMode') === 'true';
+
+    document.body.classList.toggle('dark-mode', enabled);
+
+    const btn = document.getElementById('darkModeBtn');
+
+    if (btn) {
+        btn.innerHTML = enabled
+            ? '☀️ Mode Terang'
+            : '🌙 Mode Malam';
+    }
+}
+
+function toggleDarkMode() {
+    const enabled = document.body.classList.toggle('dark-mode');
+
+    localStorage.setItem('darkMode', enabled);
+
+    const btn = document.getElementById('darkModeBtn');
+
+    if (btn) {
+        btn.innerHTML = enabled
+            ? '☀️ Mode Terang'
+            : '🌙 Mode Malam';
+    }
+}
+
+/* Jalankan saat halaman dibuka */
+document.addEventListener('DOMContentLoaded', function () {
+    applyDarkMode();
+});
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#eef2f7;color:#15202b}
 button,input,select,textarea{font:inherit}.hidden{display:none!important}.modal-overlay{position:fixed;inset:0;background:#0008;z-index:100;display:grid;place-items:center;padding:20px}.modal-box{width:min(1500px,98vw);max-height:94vh;overflow:auto;background:#fff;border-radius:10px;box-shadow:0 20px 70px #0008}.modal-box .head{position:sticky;top:0;z-index:2}.modal-box .form{background:#fff}.modal-box .formactions{position:sticky;bottom:0;background:#fff;padding:10px 0;margin:0}
 .login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#071727,#35506f)}
@@ -310,6 +346,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.modal-
   </div>
 </section>
 </main></div>
+  
 <script>
 const $=id=>document.getElementById(id), rp=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 function moneyValue(v){const s=String(v??'').replace(/[^0-9]/g,'');return s?Number(s):0}
@@ -418,4 +455,39 @@ function resetReport(){
   $('reportFrom').value='';$('reportTo').value='';loadReport();
 }
 function clearDateFilter(){$('dateFrom').value='';$('dateTo').value='';load();stats()}loadSettings().then(()=>{updateKodePrefix();$('potongan').value='Rp 0';check()}).catch(e=>{console.error(e);check()});
+/* =====================================
+   DARK MODE
+===================================== */
+
+function applyDarkMode() {
+    const enabled = localStorage.getItem('darkMode') === 'true';
+
+    document.body.classList.toggle('dark-mode', enabled);
+
+    const btn = document.getElementById('darkModeBtn');
+
+    if (btn) {
+        btn.innerHTML = enabled
+            ? '☀️ Mode Terang'
+            : '🌙 Mode Malam';
+    }
+}
+
+function toggleDarkMode() {
+    const enabled = document.body.classList.toggle('dark-mode');
+
+    localStorage.setItem('darkMode', enabled);
+
+    const btn = document.getElementById('darkModeBtn');
+
+    if (btn) {
+        btn.innerHTML = enabled
+            ? '☀️ Mode Terang'
+            : '🌙 Mode Malam';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    applyDarkMode();
+});
 </script></body></html>
