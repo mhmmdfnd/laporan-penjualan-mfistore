@@ -344,6 +344,16 @@ h1,h2,h3,h4,p,small,span,label,td,th,div{
 .btn.light{color:#172334!important;background:#fff!important}
 .btn.blue,.btn.green,.btn.red,.btn.dark{color:#fff!important}
 
+
+/* Windows/Desktop precision: No, Status, and Bukti columns */
+@media (min-width: 1101px){
+  .table th:nth-child(1),.table td:nth-child(1){width:46px;min-width:46px;max-width:46px;text-align:center;white-space:nowrap}
+  .table th:nth-child(2),.table td:nth-child(2){width:78px;min-width:78px;max-width:78px;text-align:center;white-space:nowrap}
+  .table th:nth-child(3),.table td:nth-child(3){width:145px;min-width:145px;max-width:145px;white-space:nowrap}
+  .table td:nth-child(2) .status{display:inline-flex;align-items:center;justify-content:center;min-width:46px;min-height:30px;box-sizing:border-box;white-space:nowrap;line-height:1}
+  .table td:nth-child(3) .bukti-select{display:block;width:128px;min-width:128px;max-width:128px;height:32px;box-sizing:border-box;padding:0 8px;line-height:30px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+
 /* Status/badges: compact but readable */
 .status,.role-badge,.side-status,.hackback-action{
   white-space:normal;
