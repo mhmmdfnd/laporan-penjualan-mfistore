@@ -39,6 +39,10 @@ async function bootstrap(){
 }
 async function ensureSchema(){
     await pool.query(`CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL);`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'staff';`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();`);
+    await pool.query(`UPDATE users SET role='admin' WHERE username='admin' AND (role IS NULL OR role='staff');`);
     await pool.query(`CREATE TABLE IF NOT EXISTS settings(id SERIAL PRIMARY KEY, type TEXT NOT NULL, nama TEXT NOT NULL, prefix TEXT, potongan NUMERIC DEFAULT 0, garansi INTEGER DEFAULT 0, UNIQUE(type,nama));`);
     await pool.query(`CREATE TABLE IF NOT EXISTS stores(id SERIAL PRIMARY KEY, nama TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());`);
     await pool.query(`CREATE TABLE IF NOT EXISTS sales(id SERIAL PRIMARY KEY, kode TEXT, tanggal_beli TEXT, jenis TEXT, harga_beli BIGINT DEFAULT 0, info TEXT, kode_cadangan JSONB DEFAULT '[]'::jsonb, metode_beli TEXT, tempat TEXT, tanggal_jual TEXT, tanggal_konfirmasi TEXT, metode_bayar TEXT, garansi INTEGER DEFAULT 0, pembeli TEXT, pesanan TEXT, harga_jual BIGINT DEFAULT 0, potongan BIGINT DEFAULT 0, diterima BIGINT DEFAULT 0, keuntungan BIGINT DEFAULT 0, hackback BOOLEAN DEFAULT FALSE, tanggal_hackback TEXT, bukti_status TEXT DEFAULT 'belum', created_at TIMESTAMPTZ DEFAULT NOW());`);
