@@ -160,6 +160,21 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.18;ba
 @media(max-width:720px){.top{height:auto!important;min-height:68px;padding:10px 12px!important}.actions{margin-left:auto}.actions .btn{padding:9px!important}.app-shell{width:calc(100% - 18px);grid-template-columns:1fr;margin:9px auto}.sidebar{position:relative;top:0;min-height:auto;flex-direction:row;align-items:center;overflow:auto;padding:7px}.side-brand,.side-profile{display:none}.tabs{flex-direction:row!important;min-width:max-content}.tab{font-size:0!important;width:auto!important;padding:10px 12px!important}.tab:after{font-size:16px}.content-area{width:100%}.panel .head{padding:14px!important}.toolbar{overflow:auto;flex-wrap:nowrap}.tablewrap{overflow-x:auto}.table{min-width:1200px}.brand-mark{width:36px!important;height:36px!important}.brand{display:flex!important}.top-center{display:none}}
 @media print{body{background:#fff!important}.sidebar,.top{display:none!important}.app-shell{display:block;width:100%;margin:0}.panel{box-shadow:none!important;border:0!important}.content-area{width:100%}}
 </style>
+
+<style id="v10-no-scroll-navigation">
+html{scroll-behavior:smooth}
+body{overflow-x:hidden}
+/* Setiap menu selalu dimulai dari area konten paling atas. */
+main,.main,.content,.app-content{scroll-margin-top:90px}
+.panel{scroll-margin-top:90px}
+/* Sidebar/menu tetap terlihat saat berpindah halaman. */
+@media (min-width:901px){
+  .sidebar{position:sticky;top:18px;align-self:flex-start;max-height:calc(100vh - 36px);overflow:auto}
+}
+/* Hindari panel aktif terlihat seperti terselip di bawah panel lain. */
+.panel.hidden{display:none!important}
+.panel:not(.hidden){display:block!important}
+</style>
 </head>
 <body>
 <div id="login" class="login"><div class="loginbox"><div style="font-size:35px">🎮</div><h1>Login Admin</h1><p>Website Laporan Penjualan Akun</p><form onsubmit="login(event)"><input id="lu" placeholder="Username" value="admin" required><input id="lp" type="password" placeholder="Password" value="admin123" required><button class="btn blue" style="width:100%;margin-top:8px">Masuk</button></form><p style="font-size:11px">Login awal: <b>admin / admin123</b></p><div id="lerr" style="color:#dc2626;font-size:12px"></div></div></div>
@@ -317,6 +332,7 @@ async function login(e){e.preventDefault();$('lerr').textContent='';try{await ap
 async function logout(){await api('/api/logout',{method:'POST'});CURRENT_USER=null;showLogin()}
 function tab(t){
 if(t==='input'){openInputModal();return;}
+window.scrollTo({top:0,left:0,behavior:'smooth'});
 const pages=['data','report','settings','toko','expenses','database','users'];
 pages.forEach(x=>$(x).classList.toggle('hidden',x!==t));
 const buttons={data:'td',report:'tr',settings:'ts',toko:'ttoko',expenses:'te',database:'tdb',users:'tu'};
