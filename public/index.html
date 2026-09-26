@@ -224,32 +224,208 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.modal-
    DARK MODE
 ===================================== */
 
-function applyDarkMode() {
-    const enabled = localStorage.getItem('darkMode') === 'true';
+/* =========================================
+   DARK MODE - FIX
+========================================= */
 
-    document.body.classList.toggle('dark-mode', enabled);
-
-    const btn = document.getElementById('darkModeBtn');
-
-    if (btn) {
-        btn.innerHTML = enabled
-            ? '☀️ Mode Terang'
-            : '🌙 Mode Malam';
-    }
+body.dark-mode {
+    background: #0f172a !important;
+    color: #e5e7eb !important;
 }
 
-function toggleDarkMode() {
-    const enabled = document.body.classList.toggle('dark-mode');
+/* Header utama */
+body.dark-mode .top {
+    background: #020617 !important;
+    color: #f8fafc !important;
+    border-color: #1e293b !important;
+}
 
-    localStorage.setItem('darkMode', enabled);
+body.dark-mode .top h1 {
+    color: #ffffff !important;
+}
 
-    const btn = document.getElementById('darkModeBtn');
+body.dark-mode .top small {
+    color: #94a3b8 !important;
+}
 
-    if (btn) {
-        btn.innerHTML = enabled
-            ? '☀️ Mode Terang'
-            : '🌙 Mode Malam';
-    }
+/* Area utama */
+body.dark-mode main,
+body.dark-mode .wrap {
+    background: #0f172a !important;
+}
+
+/* Tab menu */
+body.dark-mode .tabs {
+    background: transparent !important;
+}
+
+body.dark-mode .tab {
+    background: #1e293b !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .tab.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+}
+
+/* Panel */
+body.dark-mode .panel {
+    background: #111827 !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+}
+
+/* Card */
+body.dark-mode .card,
+body.dark-mode .settings-card {
+    background: #1e293b !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+    box-shadow: 0 5px 20px rgba(0,0,0,.30) !important;
+}
+
+/* Judul */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5 {
+    color: #f8fafc !important;
+}
+
+body.dark-mode p,
+body.dark-mode small,
+body.dark-mode label {
+    color: #cbd5e1 !important;
+}
+
+/* Input */
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* Toolbar */
+body.dark-mode .toolbar {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* Tabel */
+body.dark-mode table {
+    background: #1e293b !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode table th {
+    background: #020617 !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode table td {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode table tr:hover td {
+    background: #263449 !important;
+}
+
+/* Form */
+body.dark-mode .form {
+    color: #e5e7eb !important;
+}
+
+body.dark-mode .field {
+    color: #e5e7eb !important;
+}
+
+/* Report */
+body.dark-mode .report-title {
+    background: linear-gradient(90deg,#172554,#1e3a8a) !important;
+    color: #ffffff !important;
+}
+
+/* Modal */
+body.dark-mode .modal-overlay {
+    background: rgba(0,0,0,.75) !important;
+}
+
+body.dark-mode .modal-box {
+    background: #1e293b !important;
+    color: #e5e7eb !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .modal-box h2 {
+    color: #ffffff !important;
+}
+
+/* Settings */
+body.dark-mode .settings-card h3 {
+    color: #ffffff !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .settings-card table th {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .settings-card table td {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+/* Tombol Mode */
+body.dark-mode #darkModeBtn {
+    background: #f8fafc !important;
+    color: #111827 !important;
+}
+
+/* Search */
+body.dark-mode .search {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border-color: #475569 !important;
+}
+
+/* Database */
+body.dark-mode #database {
+    background: #111827 !important;
+}
+
+/* Biaya Lain-lain */
+body.dark-mode #expenses {
+    background: #111827 !important;
+}
+
+/* Scrollbar */
+body.dark-mode::-webkit-scrollbar {
+    width: 10px;
+}
+
+body.dark-mode::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+body.dark-mode::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 10px;
 }
 </style>
 
@@ -257,8 +433,7 @@ function toggleDarkMode() {
 <body>
 <div id="login" class="login"><div class="loginbox"><div style="font-size:35px">🎮</div><h1>Login Admin</h1><p>Website Laporan Penjualan Akun</p><form onsubmit="login(event)"><input id="lu" placeholder="Username" value="" required><input id="lp" type="password" placeholder="Password" value="" required><button class="btn blue" style="width:100%;margin-top:8px">Masuk</button></form><div id="lerr" style="color:#dc2626;font-size:12px"></div></div></div>
 <div id="app" class="hidden">
-<header class="top"><div class="brand"><div style="font-size:27px">🎮</div><div><h1>LAPORAN PENJUALAN AKUN</h1><small>Database akun • penjualan • keuntungan</small></div></div><div class="actions"><button class="btn blue" onclick="openInputModal()">＋ Input Data</button><button class="btn light" onclick="downloadCSV()">⬇ Excel/CSV <div class="actions">
-<button class="btn blue" onclick="openInputModal()">＋ Input Data</button>
+<header class="top"><div class="brand"><div style="font-size:27px">🎮</div><div><h1>LAPORAN PENJUALAN AKUN</h1><small>Database akun • penjualan • keuntungan</small></div></div><div class="actions">
 <button class="btn light" onclick="downloadCSV()">⬇ Excel/CSV</button>
 <button class="btn light" id="darkModeBtn" onclick="toggleDarkMode()">🌙 Mode Malam</button>
 </div></button><button class="btn dark" onclick="window.print()">🖨 Print</button><button class="btn red" onclick="logout()">Keluar</button></div></header>
