@@ -164,6 +164,85 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;ba
   .modal-box>form.form>.formactions{margin-left:-14px!important;margin-right:-14px!important;padding-left:14px!important;padding-right:14px!important;padding-bottom:calc(14px + env(safe-area-inset-bottom))!important;}
   .modal-box>form.form>.formactions .btn{min-height:44px!important;flex:1 1 0!important;}
 }
+
+/* ===== ANIMATED COLOR THEME — visual only, no layout/function changes ===== */
+@keyframes colorFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes softGlow {
+  0%,100% { box-shadow: 0 0 0 rgba(37,173,255,0); }
+  50% { box-shadow: 0 0 22px rgba(37,173,255,.16); }
+}
+
+.login {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(135deg,#06152b,#123d66,#263b75,#07182e) !important;
+  animation: colorFlow 12s ease-in-out infinite !important;
+}
+.top {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#071525,#0b3151,#123f63,#081a2e) !important;
+  animation: colorFlow 14s ease-in-out infinite !important;
+}
+.head {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#0a2038,#14527a,#274b7c,#0b2139) !important;
+  animation: colorFlow 10s ease-in-out infinite !important;
+}
+.tab.active {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#0b1b2b,#14618d,#1c4f88,#0b1b2b) !important;
+  animation: colorFlow 8s ease-in-out infinite !important;
+}
+.btn.blue {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#1677e8,#16a3e8,#345fe8,#1677e8) !important;
+  animation: colorFlow 7s ease-in-out infinite !important;
+}
+.btn.green {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#159447,#18b878,#1788a1,#159447) !important;
+  animation: colorFlow 8s ease-in-out infinite !important;
+}
+.btn.red {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#dc2626,#f05a3a,#b91c6a,#dc2626) !important;
+  animation: colorFlow 7s ease-in-out infinite !important;
+}
+.btn.dark {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#20374e,#285a76,#384b7b,#20374e) !important;
+  animation: colorFlow 9s ease-in-out infinite !important;
+}
+.status.sold {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#16813d,#16a86a,#148e8e,#16813d) !important;
+  animation: colorFlow 9s ease-in-out infinite !important;
+}
+.status.avail {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#64748b,#4f7899,#6862a0,#64748b) !important;
+  animation: colorFlow 10s ease-in-out infinite !important;
+}
+.status.hb {
+  background-size: 220% 220% !important;
+  background-image: linear-gradient(90deg,#dc2626,#ef4444,#b42374,#dc2626) !important;
+  animation: colorFlow 8s ease-in-out infinite !important;
+}
+.card {
+  transition: border-color .3s ease, box-shadow .3s ease !important;
+}
+.card:hover {
+  border-color: rgba(37,173,255,.55) !important;
+  animation: softGlow 2.4s ease-in-out infinite !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .login,.top,.head,.tab.active,.btn.blue,.btn.green,.btn.red,.btn.dark,
+  .status.sold,.status.avail,.status.hb,.card:hover { animation:none !important; }
+}
+
 </style>
 <style id="mfi-v9-ui">
 :root{--navy:#061225;--navy2:#0a1b34;--panel:#0d203b;--panel2:#102946;--line:#1d3b60;--blue:#1688ff;--cyan:#19c6ff;--text:#eaf4ff;--muted:#8fa8c4;--bg:#050d1b;--green:#20d98a;--red:#ff5574;--yellow:#ffc857;--shadow:0 18px 50px rgba(0,0,0,.28)}
