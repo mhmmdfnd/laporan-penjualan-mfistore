@@ -696,6 +696,57 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     max-width:none!important;
   }
 }
+
+/* Final desktop alignment: keep all action controls fully visible in one row. */
+@media (min-width:1101px){
+  #data .table{
+    table-layout:auto!important;
+    min-width:2200px!important;
+  }
+  #data .table th:last-child,
+  #data .table td:last-child{
+    width:310px!important;
+    min-width:310px!important;
+    max-width:310px!important;
+    box-sizing:border-box!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+  }
+  #data .table td:last-child .btn.mini{
+    width:68px!important;
+    min-width:68px!important;
+    max-width:68px!important;
+    height:36px!important;
+    min-height:36px!important;
+    padding:7px 5px!important;
+    margin:2px!important;
+    line-height:20px!important;
+    vertical-align:middle!important;
+  }
+  #data .table td:last-child .btn.green.mini{
+    width:72px!important;
+    min-width:72px!important;
+    max-width:72px!important;
+  }
+  #data .table td:last-child .hackback-action{
+    width:54px!important;
+    min-width:54px!important;
+    max-width:54px!important;
+    height:36px!important;
+    min-height:36px!important;
+    box-sizing:border-box!important;
+    padding:7px 5px!important;
+    margin:2px!important;
+    line-height:20px!important;
+    vertical-align:middle!important;
+  }
+  #data .table td:last-child .hackback-action input{
+    width:13px!important;
+    height:13px!important;
+    margin:0 3px 0 0!important;
+    vertical-align:-2px!important;
+  }
+}
 </style>
 </head>
 <body>
