@@ -252,6 +252,11 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;ba
   .table td:nth-child(2) .status{display:inline-flex!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;word-break:keep-all!important;overflow:visible!important;min-width:48px!important;height:30px!important;padding:0 10px!important;box-sizing:border-box!important;}
   .table td:nth-child(3) .bukti-select{display:inline-block!important;width:145px!important;min-width:145px!important;max-width:145px!important;height:34px!important;line-height:32px!important;padding:0 10px!important;box-sizing:border-box!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
 }
+
+/* V7: label form lebih kontras pada tema gelap */
+.field label{color:#c8ddf3!important;font-weight:800!important;text-shadow:0 1px 1px rgba(0,0,0,.35)!important}
+.field .help,.field small,.form small,.backup-list,.sale-account-info small{color:#8fb0cf!important}
+.form .field label::after{color:#6f95b7!important}
 </style>
 <style id="mfi-v9-ui">
 :root{--navy:#061225;--navy2:#0a1b34;--panel:#0d203b;--panel2:#102946;--line:#1d3b60;--blue:#1688ff;--cyan:#19c6ff;--text:#eaf4ff;--muted:#8fa8c4;--bg:#050d1b;--green:#20d98a;--red:#ff5574;--yellow:#ffc857;--shadow:0 18px 50px rgba(0,0,0,.28)}
@@ -805,7 +810,7 @@ body.dark-mode .table tr:hover td.account-info-cell,body.dark-mode .table tr:hov
 <body>
 <div id="login" class="login"><div class="loginbox"><div style="font-size:35px">🎮</div><h1>Login Admin</h1><p>Website Laporan Penjualan Akun</p><form onsubmit="login(event)"><input id="lu" placeholder="Username" value="admin" required><input id="lp" type="password" placeholder="Password" value="admin123" required><button class="btn blue" style="width:100%;margin-top:8px">Masuk</button></form><p style="font-size:11px">Login awal: <b>admin / admin123</b></p><div id="lerr" style="color:#dc2626;font-size:12px"></div></div></div>
 <div id="app" class="hidden">
-<header class="top"><div class="brand"><div class="brand-mark">V</div><div><h1>MFI ACCOUNT MANAGER</h1><small>ACCOUNT • INVENTORY • PROFIT</small></div></div><div class="top-center"><span class="live-dot"></span><span>SISTEM AKTIF</span></div><div class="actions"><button class="btn blue" onclick="openInputModal()">＋ <span>Input Akun</span></button><button class="btn light" onclick="downloadCSV()">⬇ <span>Export</span></button><button class="btn dark" onclick="window.print()">🖨 <span>Print</span></button><button class="btn red" onclick="logout()">↪ <span>Keluar</span></button></div></header>
+<header class="top"><div class="brand"><div class="brand-mark">V</div><div><h1>MFI ACCOUNT MANAGER</h1><small>ACCOUNT • INVENTORY • PROFIT</small></div></div><div class="top-center"><span class="live-dot"></span><span>SISTEM AKTIF</span></div><div class="actions"><button class="btn blue" onclick="openInputModal()">＋ <span>Input Akun</span></button><button class="btn light" onclick="exportExcel()">📊 <span>Export Excel</span></button><button class="btn dark" onclick="window.print()">🖨 <span>Print</span></button><button class="btn red" onclick="logout()">↪ <span>Keluar</span></button></div></header>
 <main class="app-shell"><aside class="sidebar"><div class="side-brand"><div class="side-logo">V</div><div><b>MFI</b><span>CONTROL CENTER</span></div></div><div class="side-profile"><div class="avatar">A</div><div><b>Admin</b><span>Administrator</span></div><span class="online"></span></div><div class="tabs">
 <button id="td" class="tab active" onclick="tab('data')">📋 Data Penjualan</button>
 <button id="tr" class="tab" onclick="tab('report')">📊 Laporan & Keuntungan</button><button id="ts" class="tab" onclick="tab('settings')">⚙️ Pengaturan</button><button id="ttoko" class="tab" onclick="tab('toko')">🏪 Toko</button><button id="te" class="tab" onclick="tab('expenses')">💸 Biaya Lain-lain</button><button id="tdb" class="tab" onclick="tab('database')">🗄️ Koneksi Database</button><button id="tu" class="tab admin-only" onclick="tab('users')">👥 Manajemen User</button>
@@ -1126,6 +1131,37 @@ function resetExpenseForm(){expenseEditId='';$('expenseTanggal').value='';$('exp
 async function saveExpense(){const o={tanggal:$('expenseTanggal').value,jenis:$('expenseJenis').value,keterangan:$('expenseKeterangan').value,jumlah:moneyValue($('expenseJumlah').value)};try{await api(expenseEditId?'/api/expenses/'+expenseEditId:'/api/expenses',{method:expenseEditId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});await appAlert('Biaya berhasil disimpan');resetExpenseForm();await loadExpenses();if(!$('report').classList.contains('hidden'))await loadReport()}catch(e){await appAlert(e.message||'Gagal menyimpan biaya')}}
 async function deleteExpense(id){if(!await appConfirm('Hapus biaya ini?'))return;try{await api('/api/expenses/'+id,{method:'DELETE'});await loadExpenses();if(!$('report').classList.contains('hidden'))await loadReport()}catch(e){await appAlert(e.message||'Gagal menghapus biaya')}}
 function buktiLabel(v){return v==='upload'?'🟢 Upload':v==='screenshot'?'🟡 Screenshot':'🔴 Belum'}
+async function exportExcel(){
+  try{
+    const p=new URLSearchParams({
+      q:$('q')?.value||'',status:$('fs')?.value||'',jenis:$('fj')?.value||'',
+      tempat:$('ftempat')?.value||'',toko:$('ftoko')?.value||'',bukti:$('fb')?.value||'',
+      from:$('dateFrom')?.value||'',to:$('dateTo')?.value||''
+    });
+    const rows=await api('/api/sales?'+p);
+    if(!rows.length){await appAlert('Tidak ada data yang sesuai dengan filter untuk diekspor.','Export Excel');return;}
+    const escX=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const backup=v=>Array.isArray(v)?v.filter(Boolean).join(' | '):(v||'');
+    const headers=['No','Status','Bukti','Kode Akun','Tanggal Beli','Jenis Akun','Harga Beli','Informasi Akun','Kode Cadangan','Metode Pembelian','Toko','Tempat Penjualan','Tanggal Terjual','Tanggal Konfirmasi','Metode Pembayaran','Garansi (Hari)','Nama Pembeli','Nomor Pesanan','Harga Jual','Potongan','Diterima Bersih','Keuntungan'];
+    const body=rows.map((x,i)=>[
+      i+1,x.hackback?'HB':(x.tanggal_jual?'Sold':'Available'),buktiLabel(x.bukti_status),x.kode,x.tanggal_beli,x.jenis,
+      Number(x.harga_beli)||0,x.info||'',backup(x.kode_cadangan),x.metode_beli||'',x.toko||'',x.tempat||'',x.tanggal_jual||'',
+      x.tanggal_konfirmasi||'',x.metode_bayar||'',Number(x.garansi)||0,x.pembeli||'',x.pesanan||'',Number(x.harga_jual)||0,
+      Number(x.potongan)||0,Number(x.diterima)||0,Number(x.keuntungan)||0
+    ]);
+    const th=headers.map(h=>`<th>${escX(h)}</th>`).join('');
+    const tr=body.map(r=>`<tr>${r.map((v,i)=>`<td class="${[6,18,19,20,21].includes(i)?'money':''}">${escX(v)}</td>`).join('')}</tr>`).join('');
+    const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse}th,td{border:1px solid #9aa7b5;padding:6px 8px;vertical-align:top}th{background:#0c2340;color:#fff;font-weight:700}.money{text-align:right;mso-number-format:"#,##0"}</style></head><body><table><thead><tr>'+th+'</tr></thead><tbody>'+tr+'</tbody></table></body></html>';
+    const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const d=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    a.href=url;a.download=`MFI-Account-Manager-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.xls`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    await appAlert(`${rows.length} data berhasil diekspor ke Excel.`,'Export Berhasil');
+  }catch(e){await appAlert(e.message||'Gagal mengekspor data ke Excel.','Export Gagal')}
+}
 async function loadReport(){
   setDefaultReportDates();
   const from=$('reportFrom').value,to=$('reportTo').value,jenis=$('reportJenis').value,toko=$('reportToko').value;
