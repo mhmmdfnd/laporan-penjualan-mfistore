@@ -768,9 +768,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 
 /* FIX: Jenis Akun filter + readable description cells. Visual/functional scope only. */
-.account-info-cell,.keterangan-cell{color:#172033 !important;background:#ffffff !important;vertical-align:top !important;white-space:pre-line !important;overflow-wrap:anywhere !important;word-break:break-word !important;line-height:1.5 !important;min-width:220px;max-width:420px;}
-.table tr:nth-child(even) td.account-info-cell,.table tr:nth-child(even) td.keterangan-cell{background:#fbfcfe !important;}
-.table tr:hover td.account-info-cell,.table tr:hover td.keterangan-cell{background:#eef6ff !important;}
+.account-info-cell,.keterangan-cell{color:#cfe0f5 !important;background:#091626 !important;vertical-align:top !important;white-space:pre-line !important;overflow-wrap:anywhere !important;word-break:break-word !important;line-height:1.5 !important;min-width:220px;max-width:420px;}
+.table tr:nth-child(even) td.account-info-cell,.table tr:nth-child(even) td.keterangan-cell{background:#0b192a !important;}
+.table tr:hover td.account-info-cell,.table tr:hover td.keterangan-cell{background:#10263f !important;}
 body.dark-mode .account-info-cell,body.dark-mode .keterangan-cell{color:#eaf4ff !important;background:#09172b !important;}
 body.dark-mode .table tr:nth-child(even) td.account-info-cell,body.dark-mode .table tr:nth-child(even) td.keterangan-cell{background:#0a1930 !important;}
 body.dark-mode .table tr:hover td.account-info-cell,body.dark-mode .table tr:hover td.keterangan-cell{background:#102646 !important;}
@@ -929,11 +929,23 @@ function renderUsers(){const q=String($('userSearch')?.value||'').toLowerCase();
 async function addUser(){const username=$('newUserUsername').value.trim(),password=$('newUserPassword').value,role=$('newUserRole').value;try{await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,role})});$('newUserUsername').value='';$('newUserPassword').value='';$('newUserRole').value='staff';$('userError').classList.add('hidden');await loadUsers();alert('User berhasil dibuat')}catch(e){$('userError').textContent=e.message||'Gagal membuat user';$('userError').classList.remove('hidden')}}
 async function editUser(id){const u=USERS.find(x=>x.id===id);if(!u)return;const username=u.username;const role=prompt(`Role untuk ${username}: admin / staff`,u.role);if(role===null)return;const r=role.toLowerCase().trim();if(!['admin','staff'].includes(r)){alert('Role harus admin atau staff');return}const active=confirm(`Status user ${username}: OK = Aktif, Cancel = Nonaktif`);const password=prompt('Password baru (kosongkan jika tidak diubah):','');if(password===null)return;if(password && password.length<6){alert('Password minimal 6 karakter');return}try{await api('/api/users/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:r,active,password})});await loadUsers();alert('User berhasil diperbarui')}catch(e){alert(e.message||'Gagal memperbarui user')}}
 async function deleteUser(id){const u=USERS.find(x=>x.id===id);if(!u||id===CURRENT_USER?.id)return;if(!confirm(`Hapus user ${u.username}?`))return;try{await api('/api/users/'+id,{method:'DELETE'});await loadUsers();alert('User berhasil dihapus')}catch(e){alert(e.message||'Gagal menghapus user')}}
+const IDLE_LIMIT=5*60*1000;
+let idleTimer=null;
+let idleCheckTimer=null;
+let lastActivityAt=0;
+const IDLE_KEY='mfi_last_activity';
+function markActivity(){if(!CURRENT_USER)return;lastActivityAt=Date.now();try{localStorage.setItem(IDLE_KEY,String(lastActivityAt))}catch(e){}scheduleIdleLogout()}
+function scheduleIdleLogout(){clearTimeout(idleTimer);if(!CURRENT_USER)return;const elapsed=Date.now()-lastActivityAt;const remaining=IDLE_LIMIT-elapsed;if(remaining<=0){autoLogout();return}idleTimer=setTimeout(autoLogout,remaining+50)}
+function stopIdleMonitor(){clearTimeout(idleTimer);clearInterval(idleCheckTimer);idleTimer=null;idleCheckTimer=null;try{localStorage.removeItem(IDLE_KEY)}catch(e){}}
+async function autoLogout(){if(!CURRENT_USER)return;stopIdleMonitor();try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'})}catch(e){}CURRENT_USER=null;showLogin('Anda telah logout otomatis karena tidak ada aktivitas selama 5 menit.')}
+function startIdleMonitor(){stopIdleMonitor();if(!CURRENT_USER)return;let stored=0;try{stored=Number(localStorage.getItem(IDLE_KEY)||0)}catch(e){}lastActivityAt=stored>0?stored:Date.now();try{localStorage.setItem(IDLE_KEY,String(lastActivityAt))}catch(e){}scheduleIdleLogout();idleCheckTimer=setInterval(()=>{if(!CURRENT_USER)return;const shared=Number(localStorage.getItem(IDLE_KEY)||lastActivityAt);lastActivityAt=Math.max(lastActivityAt,shared);if(Date.now()-lastActivityAt>=IDLE_LIMIT)autoLogout();},5000)}
+['click','keydown','mousemove','mousedown','scroll','touchstart','input','change'].forEach(ev=>window.addEventListener(ev,markActivity,{passive:true}));
+window.addEventListener('storage',e=>{if(e.key===IDLE_KEY&&CURRENT_USER){lastActivityAt=Number(e.newValue)||Date.now();scheduleIdleLogout()}});
 async function check(){const x=await fetch('/api/me').then(r=>r.json());if(x.loggedIn){CURRENT_USER=x.user;showApp()}else showLogin()}
-function showLogin(){$('login').classList.remove('hidden');$('app').classList.add('hidden')}
-function showApp(){$('login').classList.add('hidden');$('app').classList.remove('hidden');applyRoleUI();load();stats()}
-async function login(e){e.preventDefault();$('lerr').textContent='';try{await api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('lu').value,password:$('lp').value})});const me=await fetch('/api/me').then(r=>r.json());CURRENT_USER=me.user;showApp()}catch(x){$('lerr').textContent=x.message||'Login gagal'}}
-async function logout(){await api('/api/logout',{method:'POST'});CURRENT_USER=null;showLogin()}
+function showLogin(message=''){$('login').classList.remove('hidden');$('app').classList.add('hidden');stopIdleMonitor();if($('lerr'))$('lerr').textContent=message||''}
+function showApp(){$('login').classList.add('hidden');$('app').classList.remove('hidden');applyRoleUI();startIdleMonitor();load();stats()}
+async function login(e){e.preventDefault();$('lerr').textContent='';try{await api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('lu').value,password:$('lp').value})});const me=await fetch('/api/me').then(r=>r.json());CURRENT_USER=me.user;markActivity();showApp()}catch(x){$('lerr').textContent=x.message||'Login gagal'}}
+async function logout(){stopIdleMonitor();try{await api('/api/logout',{method:'POST'})}catch(e){}CURRENT_USER=null;showLogin()}
 function tab(t){
 if(t==='input'){openInputModal();return;}
 const pages=['data','report','settings','toko','expenses','database','users'];
