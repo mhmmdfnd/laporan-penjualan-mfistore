@@ -24,6 +24,25 @@ function money(v) {
   return 'Rp' + Number(v || 0).toLocaleString('id-ID');
 }
 
+function cleanBackupCodes(v) {
+  // Samakan format Telegram dengan website: satu kode = satu item array.
+  // Bisa dipisahkan dengan baris baru, spasi, koma, atau titik koma.
+  const raw = Array.isArray(v) ? v : String(v || '').split(/[\s,;]+/);
+  const codes = raw.map(x => String(x || '').trim()).filter(Boolean);
+  if (codes.length > 10) throw new Error('Maksimal 10 kode cadangan.');
+  for (const code of codes) {
+    if (!/^\d{8}$/.test(code)) {
+      throw new Error('Setiap kode cadangan harus tepat 8 digit angka.');
+    }
+  }
+  return codes;
+}
+
+function formatBackupCodes(codes) {
+  const arr = Array.isArray(codes) ? codes : [];
+  return arr.length ? arr.map((c,i) => `${i+1}. ${c}`).join('\n') : '-';
+}
+
 async function ensureTelegramSchema(pool) {
   await pool.query(`CREATE TABLE IF NOT EXISTS telegram_sessions(
     chat_id TEXT PRIMARY KEY,
@@ -106,12 +125,12 @@ async function handleCallback(update, deps) {
     state.step = 'confirm';
     await setSession(pool,chatId,state);
     return tg('sendMessage',{chat_id:chatId,text:
-`📋 KONFIRMASI DATA\n\nJenis Akun: ${state.jenis}\nKode: ${state.kode}\nTanggal Beli: ${state.tanggal_beli}\nHarga Beli: ${money(state.harga_beli)}\nInformasi: ${state.info || '-'}\nKode Cadangan: ${state.kode_cadangan || '-'}\nMetode Pembelian: ${state.metode_beli}\n\nSimpan data ini?`,reply_markup:{inline_keyboard:[[{text:'✅ SIMPAN',callback_data:'save'},{text:'❌ BATAL',callback_data:'cancel'}]]}});
+`📋 KONFIRMASI DATA\n\nJenis Akun: ${state.jenis}\nKode: ${state.kode}\nTanggal Beli: ${state.tanggal_beli}\nHarga Beli: ${money(state.harga_beli)}\nInformasi: ${state.info || '-'}\nKode Cadangan:\n${formatBackupCodes(state.kode_cadangan)}\nMetode Pembelian: ${state.metode_beli}\n\nSimpan data ini?`,reply_markup:{inline_keyboard:[[{text:'✅ SIMPAN',callback_data:'save'},{text:'❌ BATAL',callback_data:'cancel'}]]}});
   }
 
   if (data === 'save') {
     if (state.step !== 'confirm') return tg('sendMessage',{chat_id:chatId,text:'Tidak ada data yang siap disimpan. Gunakan /tambahakun.'});
-    const codes = state.kode_cadangan ? [String(state.kode_cadangan).replace(/\s+/g,'')] : [];
+    const codes = cleanBackupCodes(state.kode_cadangan || []);
     const r = await pool.query(`INSERT INTO sales(kode,tanggal_beli,jenis,harga_beli,info,kode_cadangan,metode_beli)
       VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,kode`, [state.kode,state.tanggal_beli,state.jenis,Number(state.harga_beli)||0,state.info||'',JSON.stringify(codes),state.metode_beli||'']);
     await clearSession(pool,chatId);
@@ -155,10 +174,16 @@ async function handler(req,res,deps) {
     }
     if (state.step === 'info') {
       state.info=text; state.step='kode_cadangan'; await setSession(pool,chatId,state);
-      await tg('sendMessage',{chat_id:chatId,text:'🔐 Masukkan Kode Cadangan. Jika tidak ada, ketik -'}); return res.json({ok:true});
+      await tg('sendMessage',{chat_id:chatId,text:'🔐 Masukkan Kode Cadangan.\n\n• Setiap kode harus 8 digit angka\n• Bisa masukkan beberapa kode, satu per baris\n• Maksimal 10 kode\n\nContoh:\n35367231\n69086580\n68677661\n\nJika tidak ada, ketik -'}); return res.json({ok:true});
     }
     if (state.step === 'kode_cadangan') {
-      state.kode_cadangan = text === '-' ? '' : text.replace(/\s+/g,''); state.step='metode'; await setSession(pool,chatId,state);
+      try {
+        state.kode_cadangan = text === '-' ? [] : cleanBackupCodes(text);
+      } catch (e) {
+        await tg('sendMessage',{chat_id:chatId,text:`❌ ${e.message}\n\nSilakan masukkan ulang kode cadangan.`});
+        return res.json({ok:true});
+      }
+      state.step='metode'; await setSession(pool,chatId,state);
       await sendMetode(chatId,await deps.settingsObj()); return res.json({ok:true});
     }
     await tg('sendMessage',{chat_id:chatId,text:'Pilih tombol yang tersedia atau gunakan /batal.'});
