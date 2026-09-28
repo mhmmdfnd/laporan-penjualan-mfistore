@@ -51,8 +51,6 @@ async function ensureSchema(){
     await pool.query(`UPDATE sales SET bukti_status='belum' WHERE bukti_status IS NULL OR bukti_status='' OR bukti_status NOT IN ('belum','screenshot','upload');`);
     await pool.query(`CREATE TABLE IF NOT EXISTS expenses(id SERIAL PRIMARY KEY, tanggal TEXT NOT NULL, jenis TEXT NOT NULL, keterangan TEXT DEFAULT '', jumlah BIGINT NOT NULL, toko TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW());`);
     await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS toko TEXT DEFAULT '';`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS telegram_states(chat_id TEXT PRIMARY KEY, user_id TEXT, step TEXT NOT NULL DEFAULT 'idle', payload JSONB DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ DEFAULT NOW());`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS telegram_users(chat_id TEXT PRIMARY KEY, username TEXT, first_name TEXT, active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());`);
     const u=await pool.query('SELECT id FROM users WHERE username=$1',['admin']);
     if(!u.rowCount) await pool.query('INSERT INTO users(username,password) VALUES($1,$2)',['admin','admin123']);
     const c=await pool.query('SELECT COUNT(*)::int n FROM settings');
@@ -63,6 +61,10 @@ async function init(){
   initPromise=(async()=>{await bootstrap(); await ensureSchema();})();
   return initPromise;
 }
+
+// Shared database access for Telegram integration
+app.locals.getDb = () => pool;
+app.locals.initDatabase = () => init();
 
 function parseCookies(req){const out={};String(req.headers.cookie||'').split(';').forEach(p=>{const i=p.indexOf('=');if(i>0)out[p.slice(0,i).trim()]=decodeURIComponent(p.slice(i+1));});return out;}
 function sign(value){return crypto.createHmac('sha256',process.env.SESSION_SECRET||'change-this-secret').update(value).digest('base64url');}
@@ -119,112 +121,10 @@ app.get('/api/account-summary',auth,async(req,res)=>{try{await init();const jeni
 
 app.get('/api/stats',auth,async(req,res)=>{try{await init();const from=String(req.query.from||''),to=String(req.query.to||''),jenis=String(req.query.jenis||''),tempat=String(req.query.tempat||''),toko=String(req.query.toko||'');const all=(await pool.query('SELECT * FROM sales')).rows.map(mapSale).filter(x=>(!jenis||x.jenis===jenis)&&(!tempat||x.tempat===tempat)&&(!toko||x.toko===toko)),expenses=(await pool.query('SELECT * FROM expenses')).rows.map(x=>({...x,id:Number(x.id),jumlah:Number(x.jumlah),toko:String(x.toko||'')}));const availableAccounts=all.filter(x=>!x.tanggal_jual&&!x.hackback).length,hackbackAccounts=all.filter(x=>x.hackback&&(!from||x.tanggal_hackback>=from)&&(!to||x.tanggal_hackback<=to)).length,sold=all.filter(x=>x.tanggal_jual&&!x.hackback&&(!from||x.tanggal_jual>=from)&&(!to||x.tanggal_jual<=to)),hb=all.filter(x=>x.hackback&&(!from||x.tanggal_hackback>=from)&&(!to||x.tanggal_hackback<=to)),ex=expenses.filter(x=>(!from||x.tanggal>=from)&&(!to||x.tanggal<=to)&&(!toko||x.toko===toko));const omzet=sold.reduce((a,x)=>a+x.harga_jual,0),potongan=sold.reduce((a,x)=>a+x.potongan,0),diterima=sold.reduce((a,x)=>a+x.diterima,0),modal=sold.reduce((a,x)=>a+x.harga_beli,0),biayaLain=ex.reduce((a,x)=>a+x.jumlah,0),hackbackLoss=hb.reduce((a,x)=>a+x.harga_beli,0),untungKotor=omzet-potongan,untungBersihSold=diterima-modal,untungBersihAkhir=untungBersihSold-biayaLain-hackbackLoss;const monthlyMap={};sold.forEach(x=>{const b=x.tanggal_jual.slice(0,7);if(!monthlyMap[b])monthlyMap[b]={bulan:b,jumlah:0,modal:0,omzet:0,potongan:0,kotor:0,bersih:0,biaya:0};monthlyMap[b].jumlah++;monthlyMap[b].modal+=x.harga_beli;monthlyMap[b].omzet+=x.harga_jual;monthlyMap[b].potongan+=x.potongan;monthlyMap[b].kotor+=x.harga_jual-x.potongan;monthlyMap[b].bersih+=x.keuntungan;});ex.forEach(x=>{const b=x.tanggal.slice(0,7);if(!monthlyMap[b])monthlyMap[b]={bulan:b,jumlah:0,modal:0,omzet:0,potongan:0,kotor:0,bersih:0,biaya:0};monthlyMap[b].biaya+=x.jumlah;monthlyMap[b].bersih-=x.jumlah;});const monthly=Object.values(monthlyMap).sort((a,b)=>b.bulan.localeCompare(a.bulan)).slice(0,12);const detail=sold.map(x=>({...x,status:'Sold'}));res.json({total:all.filter(x=>(x.tanggal_jual||'')&&(!from||x.tanggal_jual>=from)&&(!to||x.tanggal_jual<=to)).length,sold:sold.length,hackback:hb.length,availableAccounts,hackbackAccounts,hackbackLoss,beli:modal,omzet,potongan,diterima,biayaLain,untungBersihSold,untungKotor,untungBersih:untungBersihAkhir,untungBersihAkhir,monthly,detail,expenses:ex});}catch(e){res.status(500).json({error:e.message});}});
 
-
-
-function telegramAllowed(chatId){
-  const raw=String(process.env.TELEGRAM_ALLOWED_CHAT_IDS||'').trim();
-  if(!raw) return false;
-  return raw.split(',').map(x=>x.trim()).filter(Boolean).includes(String(chatId));
-}
-function tgToken(){return String(process.env.TELEGRAM_BOT_TOKEN||'').trim();}
-async function tgCall(method,body={}){
-  const token=tgToken();
-  if(!token) throw new Error('TELEGRAM_BOT_TOKEN belum diatur');
-  const r=await fetch(`https://api.telegram.org/bot${token}/${method}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok||!j.ok) throw new Error(j.description||`Telegram API ${r.status}`);
-  return j.result;
-}
-async function tgSend(chatId,text,extra={}){return tgCall('sendMessage',{chat_id:chatId,text,parse_mode:'HTML',...extra});}
-async function tgAnswerCallback(id,text=''){try{await tgCall('answerCallbackQuery',{callback_query_id:id,text});}catch(e){console.warn('Telegram callback:',e.message)}}
-async function tgState(chatId){const r=await pool.query('SELECT * FROM telegram_states WHERE chat_id=$1',[String(chatId)]);return r.rowCount?r.rows[0]:null;}
-async function tgSaveState(chatId,user,step,payload){await pool.query(`INSERT INTO telegram_states(chat_id,user_id,step,payload,updated_at) VALUES($1,$2,$3,$4,NOW()) ON CONFLICT(chat_id) DO UPDATE SET user_id=EXCLUDED.user_id,step=EXCLUDED.step,payload=EXCLUDED.payload,updated_at=NOW()`,[String(chatId),String(user?.id||''),step,JSON.stringify(payload||{})]);}
-async function tgClearState(chatId){await pool.query('DELETE FROM telegram_states WHERE chat_id=$1',[String(chatId)]);}
-function tgMoney(v){return new Intl.NumberFormat('id-ID').format(Number(v)||0);}
-function tgDate(v){const s=String(v||'').trim();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null;}
-function tgCodes(v){const a=String(v||'').split(/\s+/).map(x=>x.trim()).filter(Boolean);if(a.length>10)throw new Error('Maksimal 10 kode cadangan.');for(const x of a)if(!/^\d{8}$/.test(x))throw new Error('Kode cadangan harus tepat 8 digit angka.');return a;}
-async function tgSettings(){return settingsObj();}
-async function tgStart(chatId,user){
-  const st=await tgSettings();
-  if(!st.jenis.length) return tgSend(chatId,'❌ Belum ada <b>Jenis Akun</b> di Pengaturan web.');
-  await tgSaveState(chatId,user,'jenis',{});
-  const rows=st.jenis.map((x,i)=>[{text:`${i+1}. ${x.nama} (${x.prefix})`,callback_data:`tg:jenis:${x.id}`}]);
-  return tgSend(chatId,'🤖 <b>TAMBAH AKUN</b>\n\nPilih <b>Jenis Akun</b>. Pilihan ini otomatis mengikuti Pengaturan → Jenis Akun di web.',{reply_markup:{inline_keyboard:rows}});
-}
-async function tgPromptNext(chatId,step,payload){
-  const prompts={
-    kode:'2/7 — Masukkan <b>Kode Akun</b> (angka saja, tanpa prefix).',
-    tanggal_beli:'3/7 — Masukkan <b>Tanggal Beli</b> dengan format <code>YYYY-MM-DD</code>.',
-    harga_beli:'4/7 — Masukkan <b>Harga Beli</b>. Contoh: <code>150000</code>.',
-    info:'5/7 — Masukkan <b>Informasi Akun</b>. Anda boleh kirim beberapa baris.',
-    kode_cadangan:'6/7 — Masukkan <b>Kode Cadangan</b>. Bisa 1–10 kode, pisahkan dengan spasi atau baris baru. Setiap kode harus 8 digit.',
-    metode_beli:'7/7 — Pilih <b>Metode Pembelian</b>.'
-  };
-  return tgSend(chatId,prompts[step]||'Masukkan data berikut.');
-}
-async function tgConfirm(chatId,payload){
-  const backup=payload.kode_cadangan||[];
-  const txt=`🧾 <b>KONFIRMASI TAMBAH AKUN</b>\n\n`+
-    `Jenis Akun: <b>${payload.jenis}</b>\n`+
-    `Kode Akun: <b>${payload.kode}</b>\n`+
-    `Tanggal Beli: <b>${payload.tanggal_beli}</b>\n`+
-    `Harga Beli: <b>Rp ${tgMoney(payload.harga_beli)}</b>\n`+
-    `Informasi: <b>${String(payload.info||'-').slice(0,800)}</b>\n`+
-    `Kode Cadangan: <b>${backup.join(', ')||'-'}</b>\n`+
-    `Metode Pembelian: <b>${payload.metode_beli}</b>`;
-  return tgSend(chatId,txt,{reply_markup:{inline_keyboard:[[{text:'✅ SIMPAN',callback_data:'tg:save'},{text:'❌ BATAL',callback_data:'tg:cancel'}]]}});
-}
-async function tgHandleMessage(msg){
-  const chatId=String(msg.chat?.id||''); if(!chatId)return;
-  const user=msg.from||{};
-  if(!telegramAllowed(chatId)){await tgSend(chatId,'⛔ <b>Akses ditolak.</b> Chat ID Telegram ini belum diizinkan.');return;}
-  await pool.query(`INSERT INTO telegram_users(chat_id,username,first_name,active,updated_at) VALUES($1,$2,$3,TRUE,NOW()) ON CONFLICT(chat_id) DO UPDATE SET username=EXCLUDED.username,first_name=EXCLUDED.first_name,active=TRUE,updated_at=NOW()`,[chatId,String(user.username||''),String(user.first_name||'')]);
-  const text=String(msg.text||'').trim();
-  if(text==='/start'||text==='/help'){return tgSend(chatId,'🤖 <b>MFI Store Bot</b>\n\n/tambahakun — Tambah akun baru\n/batal — Batalkan proses yang sedang berjalan\n/jenis — Lihat Jenis Akun\n/metodebeli — Lihat Metode Pembelian');}
-  if(text==='/batal'){await tgClearState(chatId);return tgSend(chatId,'✅ Proses dibatalkan.');}
-  if(text==='/tambahakun')return tgStart(chatId,user);
-  if(text==='/jenis'){const st=await tgSettings();return tgSend(chatId,'📋 <b>Jenis Akun</b>\n'+st.jenis.map(x=>`• ${x.nama} — ${x.prefix}`).join('\n')||'Belum ada data.');}
-  if(text==='/metodebeli'){const st=await tgSettings();return tgSend(chatId,'🛒 <b>Metode Pembelian</b>\n'+st.metode_beli.map(x=>`• ${x.nama}`).join('\n')||'Belum ada data.');}
-  const state=await tgState(chatId); if(!state||state.step==='idle')return tgSend(chatId,'Ketik /tambahakun untuk menambahkan akun.');
-  const p=state.payload||{};
-  try{
-    if(state.step==='kode'){p.kodeNomor=text.replace(/\D/g,'');if(!p.kodeNomor)throw new Error('Kode akun harus berisi angka.');p.kode=(p.prefix||'ACC-')+p.kodeNomor;await tgSaveState(chatId,user,'tanggal_beli',p);return tgPromptNext(chatId,'tanggal_beli',p);}
-    if(state.step==='tanggal_beli'){const d=tgDate(text);if(!d)throw new Error('Tanggal tidak valid. Gunakan YYYY-MM-DD.');p.tanggal_beli=d;await tgSaveState(chatId,user,'harga_beli',p);return tgPromptNext(chatId,'harga_beli',p);}
-    if(state.step==='harga_beli'){const n=rupiahNumber(text);if(n<=0)throw new Error('Harga beli harus lebih dari 0.');p.harga_beli=n;await tgSaveState(chatId,user,'info',p);return tgPromptNext(chatId,'info',p);}
-    if(state.step==='info'){p.info=text;await tgSaveState(chatId,user,'kode_cadangan',p);return tgPromptNext(chatId,'kode_cadangan',p);}
-    if(state.step==='kode_cadangan'){p.kode_cadangan=tgCodes(text);await tgSaveState(chatId,user,'metode_beli',p);const st=await tgSettings();if(!st.metode_beli.length)throw new Error('Belum ada Metode Pembelian di Pengaturan web.');return tgSend(chatId,'7/7 — Pilih <b>Metode Pembelian</b>.',{reply_markup:{inline_keyboard:st.metode_beli.map((x,i)=>[{text:`${i+1}. ${x.nama}`,callback_data:`tg:metode:${x.id}`}])}});}
-    if(state.step==='metode_beli')return tgSend(chatId,'Silakan pilih Metode Pembelian dari tombol di atas.');
-  }catch(e){return tgSend(chatId,'❌ '+e.message);}
-}
-async function tgHandleCallback(q){
-  const chatId=String(q.message?.chat?.id||'');if(!chatId)return;if(!telegramAllowed(chatId)){return tgAnswerCallback(q.id,'Akses ditolak');}
-  await tgAnswerCallback(q.id);
-  const data=String(q.data||'');const user=q.from||{};const state=await tgState(chatId);const p=state?.payload||{};
-  try{
-    if(data.startsWith('tg:jenis:')){const id=Number(data.split(':')[2]);const st=await tgSettings(),x=st.jenis.find(v=>v.id===id);if(!x)throw new Error('Jenis Akun tidak ditemukan.');p.jenis=x.nama;p.prefix=x.prefix||'ACC-';await tgSaveState(chatId,user,'kode',p);return tgPromptNext(chatId,'kode',p);}
-    if(data.startsWith('tg:metode:')){if(!state||state.step!=='metode_beli')throw new Error('Sesi sudah tidak aktif.');const id=Number(data.split(':')[2]);const st=await tgSettings(),x=st.metode_beli.find(v=>v.id===id);if(!x)throw new Error('Metode Pembelian tidak ditemukan.');p.metode_beli=x.nama;await tgSaveState(chatId,user,'confirm',p);return tgConfirm(chatId,p);}
-    if(data==='tg:cancel'){await tgClearState(chatId);return tgSend(chatId,'❌ Tambah akun dibatalkan.');}
-    if(data==='tg:save'){
-      if(!state||state.step!=='confirm')throw new Error('Sesi sudah tidak aktif.');
-      const codes=cleanCodes(p.kode_cadangan||[]);
-      const r=await pool.query(`INSERT INTO sales(kode,tanggal_beli,jenis,harga_beli,info,kode_cadangan,metode_beli) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,[p.kode,p.tanggal_beli,p.jenis,Number(p.harga_beli)||0,p.info||'',JSON.stringify(codes),p.metode_beli||'']);
-      await tgClearState(chatId);return tgSend(chatId,`✅ <b>AKUN BERHASIL DISIMPAN</b>\n\nID: <b>${r.rows[0].id}</b>\nKode: <b>${p.kode}</b>\nJenis: <b>${p.jenis}</b>\nHarga Beli: <b>Rp ${tgMoney(p.harga_beli)}</b>\n\nData langsung masuk ke database web MFI Store.`);
-    }
-  }catch(e){return tgSend(chatId,'❌ '+e.message);}
-}
-app.post('/api/telegram/webhook',async(req,res)=>{
-  try{
-    const secret=String(process.env.TELEGRAM_WEBHOOK_SECRET||'').trim();
-    if(secret&&req.headers['x-telegram-bot-api-secret-token']!==secret)return res.status(403).json({error:'Forbidden'});
-    await init();const update=req.body||{};
-    if(update.callback_query)await tgHandleCallback(update.callback_query);else if(update.message)await tgHandleMessage(update.message);
-    res.json({ok:true});
-  }catch(e){console.error('Telegram webhook:',e);res.status(200).json({ok:false,error:e.message});}
-});
-app.get('/api/telegram/status',auth,adminOnly,async(req,res)=>{res.json({configured:Boolean(tgToken()),allowedChatIds:String(process.env.TELEGRAM_ALLOWED_CHAT_IDS||'').split(',').map(x=>x.trim()).filter(Boolean).length,webhook:`${req.protocol}://${req.get('host')}/api/telegram/webhook`});});
-app.post('/api/telegram/set-webhook',auth,adminOnly,async(req,res)=>{try{const secret=String(process.env.TELEGRAM_WEBHOOK_SECRET||'').trim();const url=String(req.body.url||`${req.protocol}://${req.get('host')}/api/telegram/webhook`);const result=await tgCall('setWebhook',{url,...(secret?{secret_token:secret}:{}),allowed_updates:['message','callback_query']});res.json({ok:true,result,url});}catch(e){res.status(400).json({error:e.message});}});
-
 app.get('/api/export',auth,async(req,res)=>{try{await init();const rows=(await pool.query('SELECT * FROM sales ORDER BY id')).rows.map(mapSale);const headers=['Kode Akun','Status','Tanggal Beli','Jenis','Harga Beli','Informasi Akun','Kode Cadangan 8 Digit','Metode Pembelian','Toko','Tempat Penjualan','Tanggal Terjual','Tanggal Konfirmasi','Metode Pembayaran','Garansi','Nama Pembeli','Nomor Pesanan','Harga Terjual','Potongan','Diterima Bersih','Keuntungan','Bukti'];const data=rows.map(x=>[x.kode,x.hackback?'HB':(x.tanggal_jual?'Sold':'Available'),x.tanggal_beli,x.jenis,x.harga_beli,x.info,x.kode_cadangan.join(' | '),x.metode_beli,x.toko,x.tempat,x.tanggal_jual,x.tanggal_konfirmasi,x.metode_bayar,x.garansi,x.pembeli,x.pesanan,x.harga_jual,x.potongan,x.diterima,x.keuntungan,x.bukti_status]);const csv=[headers,...data].map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename="laporan-penjualan.csv"');res.send('\ufeff'+csv);}catch(e){res.status(500).json({error:e.message});}});
+
+const telegramRouter = require('./telegram');
+app.use('/api/telegram', telegramRouter);
 
 app.get('*',(req,res)=>res.sendFile(path.join(process.cwd(),'public','index.html')));
 module.exports=app;
