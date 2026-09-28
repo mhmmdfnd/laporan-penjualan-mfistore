@@ -76,9 +76,20 @@ async function nextAccountNumber(pool) {
   return Number(r.rows[0]?.max_no || 0) + 1;
 }
 
+function mainMenu() {
+  return {
+    keyboard: [
+      [{ text: '➕ Tambah Akun' }],
+      [{ text: '❌ Batal' }]
+    ],
+    resize_keyboard: true,
+    is_persistent: true
+  };
+}
+
 async function sendStart(chatId) {
   await tg('sendMessage', {chat_id:chatId, text:
-`🤖 MFI STORE BOT\n\nGunakan /tambahakun untuk menambahkan akun.\n\nPerintah:\n/tambahakun - tambah akun baru\n/batal - batalkan proses`});
+`🤖 MFI STORE BOT\n\nSilakan pilih menu di bawah.\n\n➕ Tambah Akun: menambahkan akun baru\n❌ Batal: membatalkan proses yang sedang berjalan`, reply_markup: mainMenu()});
 }
 
 async function sendJenis(chatId, settings) {
@@ -134,7 +145,7 @@ async function handleCallback(update, deps) {
     const r = await pool.query(`INSERT INTO sales(kode,tanggal_beli,jenis,harga_beli,info,kode_cadangan,metode_beli)
       VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,kode`, [state.kode,state.tanggal_beli,state.jenis,Number(state.harga_beli)||0,state.info||'',JSON.stringify(codes),state.metode_beli||'']);
     await clearSession(pool,chatId);
-    return tg('sendMessage',{chat_id:chatId,text:`✅ AKUN BERHASIL DISIMPAN\n\nKode: ${r.rows[0].kode}\nJenis: ${state.jenis}\nHarga Beli: ${money(state.harga_beli)}\nTanggal Beli: ${state.tanggal_beli}\nMetode: ${state.metode_beli}`});
+    return tg('sendMessage',{chat_id:chatId,text:`✅ AKUN BERHASIL DISIMPAN\n\nKode: ${r.rows[0].kode}\nJenis: ${state.jenis}\nHarga Beli: ${money(state.harga_beli)}\nTanggal Beli: ${state.tanggal_beli}\nMetode: ${state.metode_beli}`, reply_markup:mainMenu()});
   }
   if (data === 'cancel') {
     await clearSession(pool,chatId);
@@ -161,11 +172,11 @@ async function handler(req,res,deps) {
     if (!msg) return res.status(200).json({ok:true});
     const text = String(msg.text || '').trim();
     if (text === '/start') { await clearSession(pool,chatId); await sendStart(chatId); return res.json({ok:true}); }
-    if (text === '/batal') { await clearSession(pool,chatId); await tg('sendMessage',{chat_id:chatId,text:'❌ Proses dibatalkan.'}); return res.json({ok:true}); }
-    if (text === '/tambahakun') { await clearSession(pool,chatId); await sendJenis(chatId,await deps.settingsObj()); return res.json({ok:true}); }
+    if (text === '/batal' || text === '❌ Batal') { await clearSession(pool,chatId); await tg('sendMessage',{chat_id:chatId,text:'❌ Proses dibatalkan.',reply_markup:mainMenu()}); return res.json({ok:true}); }
+    if (text === '/tambahakun' || text === '➕ Tambah Akun') { await clearSession(pool,chatId); await sendJenis(chatId,await deps.settingsObj()); return res.json({ok:true}); }
 
     const state = await getSession(pool,chatId);
-    if (!state.step) { await tg('sendMessage',{chat_id:chatId,text:'Ketik /tambahakun untuk menambahkan akun.'}); return res.json({ok:true}); }
+    if (!state.step) { await tg('sendMessage',{chat_id:chatId,text:'Silakan pilih menu di bawah untuk melanjutkan.',reply_markup:mainMenu()}); return res.json({ok:true}); }
     if (state.step === 'harga') {
       const n = Number(String(text).replace(/[^0-9]/g,''));
       if (!n) { await tg('sendMessage',{chat_id:chatId,text:'❌ Harga tidak valid. Masukkan angka, contoh: 150000'}); return res.json({ok:true}); }
