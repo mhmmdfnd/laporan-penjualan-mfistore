@@ -119,11 +119,8 @@ app.get('/api/stats',auth,async(req,res)=>{try{await init();const from=String(re
 
 app.get('/api/export',auth,async(req,res)=>{try{await init();const rows=(await pool.query('SELECT * FROM sales ORDER BY id')).rows.map(mapSale);const headers=['Kode Akun','Status','Tanggal Beli','Jenis','Harga Beli','Informasi Akun','Kode Cadangan 8 Digit','Metode Pembelian','Toko','Tempat Penjualan','Tanggal Terjual','Tanggal Konfirmasi','Metode Pembayaran','Garansi','Nama Pembeli','Nomor Pesanan','Harga Terjual','Potongan','Diterima Bersih','Keuntungan','Bukti'];const data=rows.map(x=>[x.kode,x.hackback?'HB':(x.tanggal_jual?'Sold':'Available'),x.tanggal_beli,x.jenis,x.harga_beli,x.info,x.kode_cadangan.join(' | '),x.metode_beli,x.toko,x.tempat,x.tanggal_jual,x.tanggal_konfirmasi,x.metode_bayar,x.garansi,x.pembeli,x.pesanan,x.harga_jual,x.potongan,x.diterima,x.keuntungan,x.bukti_status]);const csv=[headers,...data].map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename="laporan-penjualan.csv"');res.send('\ufeff'+csv);}catch(e){res.status(500).json({error:e.message});}});
 
-app.locals.initDatabase = init;
-app.locals.getDb = () => pool;
-
-const telegramRouter = require('./telegram');
-app.use('/api/telegram', telegramRouter);
+const telegramHandler = require('./telegram');
+app.post('/api/telegram', (req,res)=>telegramHandler(req,res,{getPool:()=>pool, init, settingsObj}));
 
 app.get('*',(req,res)=>res.sendFile(path.join(process.cwd(),'public','index.html')));
 module.exports=app;
