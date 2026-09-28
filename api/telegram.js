@@ -66,7 +66,9 @@ async function begin(chatId, user) {
 }
 function promptFor(step) {
   const map = {
-    kode: 'Masukkan *Kode Akun*:',
+    kode: 'Masukkan *Nomor Kode Akun* saja.
+
+Contoh: `888` → kode di website menjadi `ML-888`.',
     tanggal_beli: 'Masukkan *Tanggal Beli* (YYYY-MM-DD):',
     harga_beli: 'Masukkan *Harga Beli* (contoh: 150000):',
     info: 'Masukkan *Informasi Akun* (email/password/dll).\n\nJika kosong, ketik `-`.',
@@ -125,9 +127,10 @@ async function textStep(chatId, text) {
   const v = clean(text);
   try {
     if (s.step === 'kode') {
-      if (!v) throw new Error('Kode Akun tidak boleh kosong.');
-      s.data.kode = v; s.step = 'harga_beli';
-      return tg('sendMessage', { chat_id: chatId, text: `📅 Tanggal Beli: *${displayDate(s.data.tanggal_beli)}*\n\n${promptFor(s.step)}`, parse_mode: 'Markdown' });
+      if (!/^\d+$/.test(v)) throw new Error('Kode Akun harus berupa angka saja. Contoh: 888');
+      if (!s.data.jenisPrefix) throw new Error('Prefix Jenis Akun tidak ditemukan.');
+      s.data.kode = `${s.data.jenisPrefix}${v}`; s.data.kodeNomor = v; s.step = 'harga_beli';
+      return tg('sendMessage', { chat_id: chatId, text: `🔢 Nomor: *${v}*\n🏷️ Kode Akun: *${s.data.kode}*\n\n📅 Tanggal Beli: *${displayDate(s.data.tanggal_beli)}*\n\n${promptFor(s.step)}`, parse_mode: 'Markdown' });
     }
     // Tanggal beli sekarang otomatis; tidak ada input tanggal dari pengguna.
     if (s.step === 'tanggal_beli') {
