@@ -216,10 +216,15 @@ async function handleUpdate(update) {
 router.post('/', async (req, res) => {
   try {
     const secret = String(process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
-    if (secret && req.get('X-Telegram-Bot-Api-Secret-Token') !== secret) return res.status(401).json({ error: 'Unauthorized' });
-    res.status(200).json({ ok: true });
+    if (secret && req.get('X-Telegram-Bot-Api-Secret-Token') !== secret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     await handleUpdate(req.body || {});
-  } catch (e) { console.error('Telegram webhook:', e); }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('Telegram webhook:', e);
+    return res.status(200).json({ ok: false, error: e.message });
+  }
 });
 
 router.get('/', (req, res) => res.json({ ok: true, service: 'mfi-telegram', configured: Boolean(token()) }));
