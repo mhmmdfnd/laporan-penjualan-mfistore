@@ -109,21 +109,29 @@ async function sendMetode(chatId, settings) {
   return tg('sendMessage',{chat_id:chatId,text:'🛒 Pilih Metode Pembelian:',reply_markup:{inline_keyboard:keyboard}});
 }
 
-function infoOptionsForJenis(jenis) {
-  const j = String(jenis || '').toLowerCase();
-  if (j.includes('free fire') || j === 'ff' || j.includes('ff-') || j.startsWith('ff')) {
+function infoOptionsForJenis(jenis, prefix='') {
+  // Gunakan NAMA JENIS dan PREFIX supaya tetap bekerja walaupun nama
+  // di Pengaturan ditulis "Mobile Legend", "Mobile Legends", "ML", dll.
+  const j = String(jenis || '').trim().toLowerCase();
+  const p = String(prefix || '').trim().toLowerCase();
+
+  const isFF = p === 'ff-' || p === 'ff' || j.includes('free fire') || j === 'ff' || j.startsWith('ff-') || j.startsWith('ff ');
+  if (isFF) {
     return [
       ['Login Google', 'info:login_google'],
       ['Login BIND Pemulihan', 'info:login_bind_pemulihan'],
       ['Login Google + Pemulihan', 'info:login_google_pemulihan']
     ];
   }
-  if (j.includes('mobile legends') || j === 'ml' || j.includes('ml-') || j.startsWith('ml')) {
+
+  const isML = p === 'ml-' || p === 'ml' || j.includes('mobile legend') || j === 'ml' || j.startsWith('ml-') || j.startsWith('ml ');
+  if (isML) {
     return [
       ['Login Moonton', 'info:login_moonton'],
       ['Login MONKOS', 'info:login_moncos']
     ];
   }
+
   return [];
 }
 
@@ -138,8 +146,8 @@ function infoLabel(key) {
   return map[key] || key;
 }
 
-async function sendInfoOptions(chatId, jenis) {
-  const opts = infoOptionsForJenis(jenis);
+async function sendInfoOptions(chatId, jenis, prefix='') {
+  const opts = infoOptionsForJenis(jenis, prefix);
   if (!opts.length) return tg('sendMessage', {
     chat_id: chatId,
     text: '📝 Masukkan Informasi Akun (email/password/dll).'
@@ -164,7 +172,7 @@ async function handleCallback(update, deps) {
   if (data.startsWith('info:')) {
     const key = data.slice(5);
     const label = infoLabel(key);
-    const valid = infoOptionsForJenis(state.jenis).some(([, cb]) => cb === data);
+    const valid = infoOptionsForJenis(state.jenis, state.prefix).some(([, cb]) => cb === data);
     if (!valid) return tg('sendMessage',{chat_id:chatId,text:'❌ Pilihan informasi akun tidak tersedia untuk jenis akun ini.'});
     state.info_type = label;
     state.step = 'info_detail';
@@ -240,7 +248,7 @@ async function handler(req,res,deps) {
       const n = Number(String(text).replace(/[^0-9]/g,''));
       if (!n) { await tg('sendMessage',{chat_id:chatId,text:'❌ Harga tidak valid. Masukkan angka, contoh: 150000'}); return res.json({ok:true}); }
       state.harga_beli=n; state.step='info'; await setSession(pool,chatId,state);
-      await sendInfoOptions(chatId,state.jenis); return res.json({ok:true});
+      await sendInfoOptions(chatId,state.jenis,state.prefix); return res.json({ok:true});
     }
     if (state.step === 'info') {
       state.info=text; state.step='kode_cadangan'; await setSession(pool,chatId,state);
