@@ -175,12 +175,12 @@ async function handleCallback(update, deps) {
     const valid = infoOptionsForJenis(state.jenis, state.prefix).some(([, cb]) => cb === data);
     if (!valid) return tg('sendMessage',{chat_id:chatId,text:'❌ Pilihan informasi akun tidak tersedia untuk jenis akun ini.'});
     state.info_type = label;
-    state.step = 'info_detail';
+    state.step = 'info_email';
     await setSession(pool,chatId,state);
     return tg('sendMessage',{chat_id:chatId,text:`✅ ${label}
 
-Masukkan detail informasi akun (email/password/dll).
-Jika cukup dengan nama login saja, ketik -.`});
+📧 EMAIL
+Masukkan EMAIL saja (tanpa menulis "EMAIL:").`});
   }
 
   if (data.startsWith('jenis:')) {
@@ -251,12 +251,29 @@ async function handler(req,res,deps) {
       await sendInfoOptions(chatId,state.jenis,state.prefix); return res.json({ok:true});
     }
     if (state.step === 'info') {
+      // Untuk jenis akun tanpa pilihan informasi khusus, tetap gunakan input sederhana.
       state.info=text; state.step='kode_cadangan'; await setSession(pool,chatId,state);
       await tg('sendMessage',{chat_id:chatId,text:'🔐 Masukkan Kode Cadangan.\n\n• Setiap kode harus 8 digit angka\n• Spasi di dalam kode otomatis dihapus\n• Bisa masukkan beberapa kode, satu per baris\n• Maksimal 10 kode\n\nContoh:\n1877 5192\n6908 6580\n\nJika tidak ada, ketik -'}); return res.json({ok:true});
     }
-    if (state.step === 'info_detail') {
-      const detail = text === '-' ? '' : text;
-      state.info = detail ? `${state.info_type}\n${detail}` : state.info_type;
+    if (state.step === 'info_email') {
+      if (text === '-') {
+        state.info_email='';
+      } else {
+        state.info_email=text;
+      }
+      state.step='info_password';
+      await setSession(pool,chatId,state);
+      await tg('sendMessage',{chat_id:chatId,text:'🔑 PASSWORD\nMasukkan PASSWORD saja (tanpa menulis "PASSWORD:").'});
+      return res.json({ok:true});
+    }
+    if (state.step === 'info_password') {
+      state.info_password = text === '-' ? '' : text;
+      const email = state.info_email || '-';
+      const password = state.info_password || '-';
+      state.info = `${state.info_type}\nEMAIL : ${email}\nPASSWORD : ${password}`;
+      delete state.info_email;
+      delete state.info_password;
+      delete state.info_type;
       state.step='kode_cadangan'; await setSession(pool,chatId,state);
       await tg('sendMessage',{chat_id:chatId,text:'🔐 Masukkan Kode Cadangan.\n\n• Setiap kode harus 8 digit angka\n• Spasi di dalam kode otomatis dihapus\n• Bisa masukkan beberapa kode, satu per baris\n• Maksimal 10 kode\n\nContoh:\n1877 5192\n6908 6580\n\nJika tidak ada, ketik -'}); return res.json({ok:true});
     }
