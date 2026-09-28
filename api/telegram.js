@@ -25,14 +25,17 @@ function money(v) {
 }
 
 function cleanBackupCodes(v) {
-  // Samakan format Telegram dengan website: satu kode = satu item array.
-  // Bisa dipisahkan dengan baris baru, spasi, koma, atau titik koma.
-  const raw = Array.isArray(v) ? v : String(v || '').split(/[\s,;]+/);
-  const codes = raw.map(x => String(x || '').trim()).filter(Boolean);
+  // Kode cadangan 8 digit. Spasi di DALAM satu kode dihapus.
+  // Contoh: "1877 5192" -> "18775192".
+  // Jika beberapa kode, pisahkan dengan baris baru, koma, atau titik koma.
+  const source = Array.isArray(v) ? v : String(v || '').split(/[\n,;]+/);
+  const codes = source
+    .map(x => String(x || '').replace(/\s+/g, '').trim())
+    .filter(Boolean);
   if (codes.length > 10) throw new Error('Maksimal 10 kode cadangan.');
   for (const code of codes) {
     if (!/^\d{8}$/.test(code)) {
-      throw new Error('Setiap kode cadangan harus tepat 8 digit angka.');
+      throw new Error('Setiap kode cadangan harus tepat 8 digit angka. Contoh: 1877 5192 akan menjadi 18775192.');
     }
   }
   return codes;
@@ -106,6 +109,48 @@ async function sendMetode(chatId, settings) {
   return tg('sendMessage',{chat_id:chatId,text:'🛒 Pilih Metode Pembelian:',reply_markup:{inline_keyboard:keyboard}});
 }
 
+function infoOptionsForJenis(jenis) {
+  const j = String(jenis || '').toLowerCase();
+  if (j.includes('free fire') || j === 'ff' || j.includes('ff-') || j.startsWith('ff')) {
+    return [
+      ['Login Google', 'info:login_google'],
+      ['Login BIND Pemulihan', 'info:login_bind_pemulihan'],
+      ['Login Google + Pemulihan', 'info:login_google_pemulihan']
+    ];
+  }
+  if (j.includes('mobile legends') || j === 'ml' || j.includes('ml-') || j.startsWith('ml')) {
+    return [
+      ['Login Moonton', 'info:login_moonton'],
+      ['Login MONKOS', 'info:login_moncos']
+    ];
+  }
+  return [];
+}
+
+function infoLabel(key) {
+  const map = {
+    login_google: 'Login Google',
+    login_bind_pemulihan: 'Login BIND Pemulihan',
+    login_google_pemulihan: 'Login Google + Pemulihan',
+    login_moonton: 'Login Moonton',
+    login_moncos: 'Login MONKOS'
+  };
+  return map[key] || key;
+}
+
+async function sendInfoOptions(chatId, jenis) {
+  const opts = infoOptionsForJenis(jenis);
+  if (!opts.length) return tg('sendMessage', {
+    chat_id: chatId,
+    text: '📝 Masukkan Informasi Akun (email/password/dll).'
+  });
+  return tg('sendMessage', {
+    chat_id: chatId,
+    text: `📝 Pilih jenis Informasi Akun untuk ${jenis}:`,
+    reply_markup: { inline_keyboard: opts.map(([label, data]) => [{text: label, callback_data: data}]) }
+  });
+}
+
 async function handleCallback(update, deps) {
   const q = update.callback_query;
   const chatId = q.message?.chat?.id;
@@ -115,6 +160,20 @@ async function handleCallback(update, deps) {
   const data = String(q.data || '');
   const state = await getSession(pool, chatId);
   const settings = await deps.settingsObj();
+
+  if (data.startsWith('info:')) {
+    const key = data.slice(5);
+    const label = infoLabel(key);
+    const valid = infoOptionsForJenis(state.jenis).some(([, cb]) => cb === data);
+    if (!valid) return tg('sendMessage',{chat_id:chatId,text:'❌ Pilihan informasi akun tidak tersedia untuk jenis akun ini.'});
+    state.info_type = label;
+    state.step = 'info_detail';
+    await setSession(pool,chatId,state);
+    return tg('sendMessage',{chat_id:chatId,text:`✅ ${label}
+
+Masukkan detail informasi akun (email/password/dll).
+Jika cukup dengan nama login saja, ketik -.`});
+  }
 
   if (data.startsWith('jenis:')) {
     const id = Number(data.slice(6));
@@ -181,11 +240,17 @@ async function handler(req,res,deps) {
       const n = Number(String(text).replace(/[^0-9]/g,''));
       if (!n) { await tg('sendMessage',{chat_id:chatId,text:'❌ Harga tidak valid. Masukkan angka, contoh: 150000'}); return res.json({ok:true}); }
       state.harga_beli=n; state.step='info'; await setSession(pool,chatId,state);
-      await tg('sendMessage',{chat_id:chatId,text:'📝 Masukkan Informasi Akun (email/password/dll).'}); return res.json({ok:true});
+      await sendInfoOptions(chatId,state.jenis); return res.json({ok:true});
     }
     if (state.step === 'info') {
       state.info=text; state.step='kode_cadangan'; await setSession(pool,chatId,state);
-      await tg('sendMessage',{chat_id:chatId,text:'🔐 Masukkan Kode Cadangan.\n\n• Setiap kode harus 8 digit angka\n• Bisa masukkan beberapa kode, satu per baris\n• Maksimal 10 kode\n\nContoh:\n35367231\n69086580\n68677661\n\nJika tidak ada, ketik -'}); return res.json({ok:true});
+      await tg('sendMessage',{chat_id:chatId,text:'🔐 Masukkan Kode Cadangan.\n\n• Setiap kode harus 8 digit angka\n• Spasi di dalam kode otomatis dihapus\n• Bisa masukkan beberapa kode, satu per baris\n• Maksimal 10 kode\n\nContoh:\n1877 5192\n6908 6580\n\nJika tidak ada, ketik -'}); return res.json({ok:true});
+    }
+    if (state.step === 'info_detail') {
+      const detail = text === '-' ? '' : text;
+      state.info = detail ? `${state.info_type}\n${detail}` : state.info_type;
+      state.step='kode_cadangan'; await setSession(pool,chatId,state);
+      await tg('sendMessage',{chat_id:chatId,text:'🔐 Masukkan Kode Cadangan.\n\n• Setiap kode harus 8 digit angka\n• Spasi di dalam kode otomatis dihapus\n• Bisa masukkan beberapa kode, satu per baris\n• Maksimal 10 kode\n\nContoh:\n1877 5192\n6908 6580\n\nJika tidak ada, ketik -'}); return res.json({ok:true});
     }
     if (state.step === 'kode_cadangan') {
       try {
