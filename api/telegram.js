@@ -119,8 +119,8 @@ function infoOptionsForJenis(jenis, prefix='') {
   if (isFF) {
     return [
       ['Login Google', 'info:login_google'],
-      ['Login BIND', 'info:login_bind_pemulihan'],
-      ['Login Google + Bind', 'info:login_google_pemulihan']
+      ['Login BIND Pemulihan', 'info:login_bind_pemulihan'],
+      ['Login Google + Pemulihan', 'info:login_google_pemulihan']
     ];
   }
 
@@ -137,9 +137,9 @@ function infoOptionsForJenis(jenis, prefix='') {
 
 function infoLabel(key) {
   const map = {
-    login_google: '(Login Google)',
-    login_bind_pemulihan: '(Login BIND)',
-    login_google_pemulihan: '(Login Google + Bind)',
+    login_google: 'Login Google',
+    login_bind_pemulihan: 'Login BIND Pemulihan',
+    login_google_pemulihan: 'Login Google + Pemulihan',
     login_moonton: 'Login Moonton',
     login_moncos: 'Login MONKOS'
   };
