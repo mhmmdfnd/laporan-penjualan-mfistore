@@ -23,7 +23,7 @@ function rupiah(v) {
   return digits ? Number(digits) : 0;
 }
 function formatRp(n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
 function displayDate(v) {
   const s = clean(v);
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.split('-').reverse().join('/');
@@ -126,12 +126,13 @@ async function textStep(chatId, text) {
   try {
     if (s.step === 'kode') {
       if (!v) throw new Error('Kode Akun tidak boleh kosong.');
-      s.data.kode = v; s.step = 'tanggal_beli';
-      return tg('sendMessage', { chat_id: chatId, text: promptFor(s.step), parse_mode: 'Markdown' });
+      s.data.kode = v; s.step = 'harga_beli';
+      return tg('sendMessage', { chat_id: chatId, text: `📅 Tanggal Beli: *${displayDate(s.data.tanggal_beli)}*\n\n${promptFor(s.step)}`, parse_mode: 'Markdown' });
     }
+    // Tanggal beli sekarang otomatis; tidak ada input tanggal dari pengguna.
     if (s.step === 'tanggal_beli') {
-      if (!validDate(v)) throw new Error('Format tanggal harus YYYY-MM-DD.');
-      s.data.tanggal_beli = v; s.step = 'harga_beli';
+      s.data.tanggal_beli = today();
+      s.step = 'harga_beli';
       return tg('sendMessage', { chat_id: chatId, text: promptFor(s.step), parse_mode: 'Markdown' });
     }
     if (s.step === 'harga_beli') {
@@ -173,9 +174,12 @@ async function callback(chatId, data, callbackId) {
     if (!s) return tg('answerCallbackQuery', { callback_query_id: callbackId, text: 'Sesi berakhir. /tambahakun' });
     const id = Number(data.split(':')[1]); const items = await settings('jenis'); const x = items.find(a => Number(a.id) === id);
     if (!x) return tg('answerCallbackQuery', { callback_query_id: callbackId, text: 'Jenis Akun tidak ditemukan' });
-    s.data.jenisNama = x.nama; s.data.jenisPrefix = x.prefix || ''; s.step = 'kode'; s.updated = Date.now();
-    await tg('answerCallbackQuery', { callback_query_id: callbackId, text: x.nama });
-    return tg('sendMessage', { chat_id: chatId, text: `${promptFor('kode')}\nPrefix: *${x.prefix || '-'}*`, parse_mode: 'Markdown' });
+    s.data.jenisNama = x.nama; s.data.jenisPrefix = x.prefix || '';
+    // Tanggal beli otomatis mengikuti tanggal hari ini (WIB/Asia-Jakarta).
+    s.data.tanggal_beli = today();
+    s.step = 'kode'; s.updated = Date.now();
+    await tg('answerCallbackQuery', { callback_query_id: callbackId, text: `${x.nama} • ${displayDate(s.data.tanggal_beli)}` });
+    return tg('sendMessage', { chat_id: chatId, text: `📅 Tanggal Beli otomatis: *${displayDate(s.data.tanggal_beli)}*\n\n${promptFor('kode')}\nPrefix: *${x.prefix || '-'}*`, parse_mode: 'Markdown' });
   }
   if (data.startsWith('metode:')) {
     if (!s) return tg('answerCallbackQuery', { callback_query_id: callbackId, text: 'Sesi berakhir. /tambahakun' });
