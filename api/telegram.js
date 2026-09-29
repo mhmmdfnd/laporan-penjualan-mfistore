@@ -245,8 +245,10 @@ async function handler(req,res,deps) {
     const state = await getSession(pool,chatId);
     if (!state.step) { await tg('sendMessage',{chat_id:chatId,text:'Silakan pilih menu di bawah untuk melanjutkan.',reply_markup:mainMenu()}); return res.json({ok:true}); }
     if (state.step === 'harga') {
-      const n = Number(String(text).replace(/[^0-9]/g,''));
-      if (!n) { await tg('sendMessage',{chat_id:chatId,text:'❌ Harga tidak valid. Masukkan angka, contoh: 150000'}); return res.json({ok:true}); }
+      const cleaned = String(text).replace(/[^0-9]/g,'');
+      if (cleaned === '') { await tg('sendMessage',{chat_id:chatId,text:'❌ Harga tidak valid. Masukkan angka, contoh: 150000'}); return res.json({ok:true}); }
+      const n = Number(cleaned);
+      if (!Number.isFinite(n) || n < 0) { await tg('sendMessage',{chat_id:chatId,text:'❌ Harga tidak valid. Masukkan angka, contoh: 150000'}); return res.json({ok:true}); }
       state.harga_beli=n; state.step='info'; await setSession(pool,chatId,state);
       await sendInfoOptions(chatId,state.jenis,state.prefix); return res.json({ok:true});
     }
